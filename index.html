@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hackathon CTF & Clash Arena</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Canvas Confetti for Final Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="min-h-full flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- ================= STICKY HEADER & TIMER ================= -->
+  <header class="sticky top-0 z-50 bg-slate-800/90 backdrop-blur-md border-b border-slate-700 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-3">
+        <div class="h-3 w-3 rounded-full bg-emerald-400 animate-pulse"></div>
+        <h1 class="text-xl font-bold tracking-tight text-white">GridHack <span class="text-brand-500">2026</span></h1>
+      </div>
+
+      <!-- Big Countdown Timer -->
+      <div class="flex items-center space-x-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700/60 font-mono text-center">
+        <span class="text-xs text-slate-400 uppercase tracking-widest mr-2 font-sans font-semibold">Time Remaining:</span>
+        <div class="flex space-x-1 text-lg font-bold text-amber-400">
+          <span id="timer-hours">02</span><span class="text-slate-600">:</span>
+          <span id="timer-mins">45</span><span class="text-slate-600">:</span>
+          <span id="timer-secs">00</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex space-x-1 bg-slate-900/50 p-1 rounded-xl border border-slate-700/50">
+        <button onclick="switchTab('tasks')" id="tab-btn-tasks" 
+          class="tab-btn active px-4 py-1.5 text-sm font-medium rounded-lg transition-all text-white bg-brand-600 shadow">
+          🎯 Tasks
+        </button>
+        <button onclick="switchTab('leaderboard')" id="tab-btn-leaderboard" 
+          class="tab-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all text-slate-400 hover:text-white">
+          🏆 Leaderboard
+        </button>
+        <button onclick="switchTab('clash')" id="tab-btn-clash" 
+          class="tab-btn px-4 py-1.5 text-sm font-medium rounded-lg transition-all text-slate-400 hover:text-white">
+          ⚔️ Clash
+        </button>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT CONTAINER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
+
+    <!-- ----------------- TAB 1: TASKS / CTF ----------------- -->
+    <section id="tab-tasks" class="tab-content block space-y-6">
+      <div class="flex justify-between items-end border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white">Hackathon Challenges</h2>
+          <p class="text-slate-400 text-sm mt-1">Solve the technical challenges below and submit your flags to gain points.</p>
+        </div>
+        <div class="text-right">
+          <span class="text-xs text-slate-500 uppercase font-semibold">Your Total</span>
+          <p class="text-2xl font-black text-emerald-400" id="user-points">150 pts</p>
+        </div>
+      </div>
+
+      <!-- Tasks Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="tasks-container">
+        <!-- Sample Task Cards populated via JS below -->
+      </div>
+    </section>
+
+    <!-- ----------------- TAB 2: LEADERBOARD ----------------- -->
+    <section id="tab-leaderboard" class="tab-content hidden space-y-6">
+      <div class="flex justify-between items-end border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white">Live Scoreboard</h2>
+          <p class="text-slate-400 text-sm mt-1">Scores update live during task completion. Multipliers apply after the Clash event.</p>
+        </div>
+        <button onclick="runConfetti()" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700">
+          🎉 Trigger Final Celebration
+        </button>
+      </div>
+
+      <div class="overflow-x-auto bg-slate-800/40 rounded-2xl border border-slate-700/50 shadow-xl">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-800/80 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-700">
+              <th class="p-4">Rank</th>
+              <th class="p-4">Team Name</th>
+              <th class="p-4 text-center">Tasks Completed</th>
+              <th class="p-4 text-right">Base Points</th>
+              <th class="p-4 text-center">Clash Multiplier</th>
+              <th class="p-4 text-right font-bold text-white">Total Score</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-700/50 text-sm" id="leaderboard-body">
+            <!-- Populated dynamically via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ----------------- TAB 3: CLASH ----------------- -->
+    <section id="tab-clash" class="tab-content hidden space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <h2 class="text-2xl font-bold text-white">The Clash Arena</h2>
+        <p class="text-slate-400 text-sm mt-1">Upload your team's bot script or preview the tournament canvas when the event concludes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Bot Upload & Rules -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 space-y-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🤖</span> Bot Code Submission
+            </h3>
+            <p class="text-xs text-slate-400">
+              Upload your completed <code class="text-brand-500 bg-slate-900 px-1 py-0.5 rounded">bot.js</code> logic. You can overwrite your upload until time expires.
+            </p>
+            
+            <form onsubmit="handleBotUpload(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Select File</label>
+                <input type="file" id="bot-file" accept=".js" required
+                  class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-500 cursor-pointer bg-slate-900 rounded-xl border border-slate-700/80 p-1">
+              </div>
+              <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl transition text-sm shadow-md">
+                Upload Bot Script
+              </button>
+            </form>
+            <div id="upload-status" class="hidden text-xs text-emerald-400 font-medium">✓ Bot script uploaded successfully!</div>
+          </div>
+
+          <!-- Quick Multiplier Breakdown Card -->
+          <div class="bg-slate-800/30 p-5 rounded-2xl border border-slate-700/60 text-xs space-y-2">
+            <h4 class="font-bold text-slate-200">Tournament Multipliers</h4>
+            <div class="grid grid-cols-5 gap-1 text-center font-mono pt-1">
+              <div class="p-2 bg-slate-900/60 rounded-lg border border-amber-500/30"><div class="text-amber-400 font-bold">1st</div>3.0x</div>
+              <div class="p-2 bg-slate-900/60 rounded-lg border border-slate-700"><div class="text-slate-300 font-bold">2nd</div>2.5x</div>
+              <div class="p-2 bg-slate-900/60 rounded-lg border border-slate-700"><div class="text-amber-700 font-bold">3rd</div>2.0x</div>
+              <div class="p-2 bg-slate-900/60 rounded-lg border border-slate-700"><div class="text-slate-400 font-bold">4th</div>1.5x</div>
+              <div class="p-2 bg-slate-900/60 rounded-lg border border-slate-700"><div class="text-slate-500 font-bold">5th</div>1.0x</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Visualizer Canvas -->
+        <div class="lg:col-span-7 bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex flex-col items-center justify-center space-y-4">
+          <div class="flex justify-between items-center w-full">
+            <span class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Tournament Visualizer Preview</span>
+            <span class="text-xs bg-brand-500/20 text-brand-500 font-mono px-2 py-0.5 rounded border border-brand-500/30">Round 1 / 5</span>
+          </div>
+
+          <!-- Arena Grid Canvas -->
+          <canvas id="clash-canvas" width="360" height="360" class="bg-slate-900 rounded-xl border-2 border-slate-700 shadow-inner max-w-full"></canvas>
+
+          <!-- Playback Controls -->
+          <div class="flex items-center space-x-3 w-full max-w-xs">
+            <button onclick="drawGrid()" class="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs font-semibold text-white rounded-lg transition">
+              Reset Arena
+            </button>
+            <button onclick="demoAnimate()" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white rounded-lg transition shadow">
+              ▶ Run Match
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // --- 1. Tab Navigation ---
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-600', 'text-white', 'shadow');
+        btn.classList.add('text-slate-400');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow');
+      activeBtn.classList.remove('text-slate-400');
+      
+      if(tabId === 'clash') drawGrid();
+    }
+
+    // --- 2. Countdown Timer Logic ---
+    let totalSeconds = 9900; // 2 hours, 45 minutes
+    setInterval(() => {
+      if (totalSeconds <= 0) return;
+      totalSeconds--;
+      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSeconds % 60).padStart(2, '0');
+      
+      document.getElementById('timer-hours').textContent = hrs;
+      document.getElementById('timer-mins').textContent = mins;
+      document.getElementById('timer-secs').textContent = secs;
+    }, 1000);
+
+    // --- 3. Mock Task Data & Rendering ---
+    const tasks = [
+      { id: 1, title: "1. The Decryption Protocol", pts: 50, type: "text", desc: "Decode the secret cipher found in the welcome packet.", solved: true },
+      { id: 2, title: "2. Query Optimizer", pts: 100, type: "numeric", desc: "Calculate the exact minimum I/O cost for the index scan challenge.", solved: false },
+      { id: 3, title: "3. Neural Loss Threshold", pts: 100, type: "numeric", desc: "What is the steady-state reconstruction loss value after 500 steps?", solved: false },
+      { id: 4, title: "4. The Rogue Memory Leak", pts: 150, type: "text", desc: "Find the memory offset address causing the segmentation fault.", solved: false }
+    ];
+
+    function renderTasks() {
+      const container = document.getElementById('tasks-container');
+      container.innerHTML = tasks.map(t => `
+        <div class="bg-slate-800/40 p-5 rounded-2xl border ${t.solved ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-700/60'} space-y-3">
+          <div class="flex justify-between items-start">
+            <h3 class="font-bold text-white text-base">${t.title}</h3>
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-full ${t.solved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}">+${t.pts} pts</span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">${t.desc}</p>
+          
+          ${t.solved ? `
+            <div class="text-xs text-emerald-400 font-semibold flex items-center gap-1 pt-1">
+              ✓ Solved & Verified
+            </div>
+          ` : `
+            <form onsubmit="submitTask(event, ${t.id})" class="flex gap-2 pt-1">
+              <input type="text" placeholder="${t.type === 'numeric' ? 'Enter numerical answer...' : 'flag{...}'}" required
+                class="flex-1 bg-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-brand-500 text-slate-200 font-mono">
+              <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+                Submit
+              </button>
+            </form>
+          `}
+        </div>
+      `).join('');
+    }
+    renderTasks();
+
+    function submitTask(e, taskId) {
+      e.preventDefault();
+      const task = tasks.find(t => t.id === taskId);
+      if(task) {
+        task.solved = true;
+        renderTasks();
+      }
+    }
+
+    // --- 4. Leaderboard Mock Data ---
+    const leaderboardData = [
+      { rank: 1, name: "Null Pointers", tasks: "8/10", basePts: 650, mult: "3.0x", total: 1950 },
+      { rank: 2, name: "Byte Force", tasks: "7/10", basePts: 550, mult: "2.5x", total: 1375 },
+      { rank: 3, name: "Kernel Panic", tasks: "6/10", basePts: 450, mult: "2.0x", total: 900 },
+      { rank: 4, name: "AlgoRhythms", tasks: "5/10", basePts: 350, mult: "1.5x", total: 525 },
+      { rank: 5, name: "Syntax Errors", tasks: "4/10", basePts: 250, mult: "1.0x", total: 250 },
+    ];
+
+    function renderLeaderboard() {
+      const tbody = document.getElementById('leaderboard-body');
+      tbody.innerHTML = leaderboardData.map(row => `
+        <tr class="hover:bg-slate-700/20 transition">
+          <td class="p-4 font-bold ${row.rank === 1 ? 'text-amber-400' : row.rank === 2 ? 'text-slate-300' : row.rank === 3 ? 'text-amber-700' : 'text-slate-500'}">#${row.rank}</td>
+          <td class="p-4 font-semibold text-white">${row.name}</td>
+          <td class="p-4 text-center font-mono text-slate-400">${row.tasks}</td>
+          <td class="p-4 text-right font-mono text-slate-300">${row.basePts}</td>
+          <td class="p-4 text-center font-mono text-brand-400 font-bold">${row.mult}</td>
+          <td class="p-4 text-right font-mono font-black text-emerald-400 text-base">${row.total}</td>
+        </tr>
+      `).join('');
+    }
+    renderLeaderboard();
+
+    // --- 5. Clash Canvas Quick Preview ---
+    const canvas = document.getElementById('clash-canvas');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 9;
+    const cellSize = canvas.width / gridSize;
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw grid lines
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= gridSize; i++) {
+        ctx.beginPath(); ctx.moveTo(i * cellSize, 0); ctx.lineTo(i * cellSize, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * cellSize); ctx.lineTo(canvas.width, i * cellSize); ctx.stroke();
+      }
+
+      // Draw Goal (Center)
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(4 * cellSize + 4, 4 * cellSize + 4, cellSize - 8, cellSize - 8);
+
+      // Draw Player 1 & Player 2
+      ctx.fillStyle = '#3b82f6'; // Blue Team
+      ctx.beginPath(); ctx.arc(1 * cellSize + cellSize/2, 1 * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#ef4444'; // Red Team
+      ctx.beginPath(); ctx.arc(7 * cellSize + cellSize/2, 7 * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function demoAnimate() {
+      drawGrid();
+      // Simple visual ripple on play trigger
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(4 * cellSize, 4 * cellSize, cellSize, cellSize);
+    }
+
+    function handleBotUpload(e) {
+      e.preventDefault();
+      document.getElementById('upload-status').classList.remove('hidden');
+    }
+
+    function runConfetti() {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    }
+  </script>
+</body>
+</html>
