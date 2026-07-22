@@ -185,152 +185,208 @@
 
   </main>
 
-  <!-- ================= JAVASCRIPT LOGIC ================= -->
-  <script>
-    // --- 1. Tab Navigation ---
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('bg-brand-600', 'text-white', 'shadow');
-        btn.classList.add('text-slate-400');
-      });
+<!-- ================= JAVASCRIPT LOGIC ================= -->
+<script>
+  // --- 1. State & Configuration ---
+  const API_BASE = "https://gridhack-backend.onrender.com"; // Live Render Web Service
+  let currentTeamName = localStorage.getItem('teamName') || "Team_Alpha";
+  let totalSeconds = 9900; // 2 hours, 45 minutes
 
-      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+  // Mock Task Data
+  const tasks = [
+    { id: 1, title: "1. The Decryption Protocol", pts: 50, type: "text", desc: "Decode the secret cipher found in the welcome packet.", solved: true },
+    { id: 2, title: "2. Query Optimizer", pts: 100, type: "numeric", desc: "Calculate the exact minimum I/O cost for the index scan challenge.", solved: false },
+    { id: 3, title: "3. Neural Loss Threshold", pts: 100, type: "numeric", desc: "What is the steady-state reconstruction loss value after 500 steps?", solved: false },
+    { id: 4, title: "4. The Rogue Memory Leak", pts: 150, type: "text", desc: "Find the memory offset address causing the segmentation fault.", solved: false }
+  ];
+
+  // --- 2. Navigation & UI ---
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('bg-brand-600', 'text-white', 'shadow');
+      btn.classList.add('text-slate-400');
+    });
+
+    const targetTab = document.getElementById(`tab-${tabId}`);
+    if (targetTab) targetTab.classList.remove('hidden');
+
+    const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+    if (activeBtn) {
       activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow');
       activeBtn.classList.remove('text-slate-400');
-      
-      if(tabId === 'clash') drawGrid();
     }
+    
+    if (tabId === 'clash') drawGrid();
+  }
 
-    // --- 2. Countdown Timer Logic ---
-    let totalSeconds = 9900; // 2 hours, 45 minutes
-    setInterval(() => {
-      if (totalSeconds <= 0) return;
-      totalSeconds--;
-      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-      const secs = String(totalSeconds % 60).padStart(2, '0');
-      
-      document.getElementById('timer-hours').textContent = hrs;
-      document.getElementById('timer-mins').textContent = mins;
-      document.getElementById('timer-secs').textContent = secs;
-    }, 1000);
+  // --- 3. Countdown Timer ---
+  setInterval(() => {
+    if (totalSeconds <= 0) return;
+    totalSeconds--;
+    const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const secs = String(totalSeconds % 60).padStart(2, '0');
+    
+    const hrsEl = document.getElementById('timer-hours');
+    const minsEl = document.getElementById('timer-mins');
+    const secsEl = document.getElementById('timer-secs');
 
-    // --- 3. Mock Task Data & Rendering ---
-    const tasks = [
-      { id: 1, title: "1. The Decryption Protocol", pts: 50, type: "text", desc: "Decode the secret cipher found in the welcome packet.", solved: true },
-      { id: 2, title: "2. Query Optimizer", pts: 100, type: "numeric", desc: "Calculate the exact minimum I/O cost for the index scan challenge.", solved: false },
-      { id: 3, title: "3. Neural Loss Threshold", pts: 100, type: "numeric", desc: "What is the steady-state reconstruction loss value after 500 steps?", solved: false },
-      { id: 4, title: "4. The Rogue Memory Leak", pts: 150, type: "text", desc: "Find the memory offset address causing the segmentation fault.", solved: false }
-    ];
+    if (hrsEl) hrsEl.textContent = hrs;
+    if (minsEl) minsEl.textContent = mins;
+    if (secsEl) secsEl.textContent = secs;
+  }, 1000);
 
-    function renderTasks() {
-      const container = document.getElementById('tasks-container');
-      container.innerHTML = tasks.map(t => `
-        <div class="bg-slate-800/40 p-5 rounded-2xl border ${t.solved ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-700/60'} space-y-3">
-          <div class="flex justify-between items-start">
-            <h3 class="font-bold text-white text-base">${t.title}</h3>
-            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-full ${t.solved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}">+${t.pts} pts</span>
-          </div>
-          <p class="text-xs text-slate-400 leading-relaxed">${t.desc}</p>
-          
-          ${t.solved ? `
-            <div class="text-xs text-emerald-400 font-semibold flex items-center gap-1 pt-1">
-              ✓ Solved & Verified
-            </div>
-          ` : `
-            <form onsubmit="submitTask(event, ${t.id})" class="flex gap-2 pt-1">
-              <input type="text" placeholder="${t.type === 'numeric' ? 'Enter numerical answer...' : 'flag{...}'}" required
-                class="flex-1 bg-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-brand-500 text-slate-200 font-mono">
-              <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
-                Submit
-              </button>
-            </form>
-          `}
+  // --- 4. Task Rendering & API Submission ---
+  function renderTasks() {
+    const container = document.getElementById('tasks-container');
+    if (!container) return;
+
+    container.innerHTML = tasks.map(t => `
+      <div class="bg-slate-800/40 p-5 rounded-2xl border ${t.solved ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-700/60'} space-y-3">
+        <div class="flex justify-between items-start">
+          <h3 class="font-bold text-white text-base">${t.title}</h3>
+          <span class="text-xs font-mono font-bold px-2 py-0.5 rounded-full ${t.solved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}">+${t.pts} pts</span>
         </div>
-      `).join('');
-    }
-    renderTasks();
+        <p class="text-xs text-slate-400 leading-relaxed">${t.desc}</p>
+        
+        ${t.solved ? `
+          <div class="text-xs text-emerald-400 font-semibold flex items-center gap-1 pt-1">
+            ✓ Solved & Verified
+          </div>
+        ` : `
+          <form onsubmit="submitTask(event, ${t.id})" class="flex gap-2 pt-1">
+            <input type="text" placeholder="${t.type === 'numeric' ? 'Enter numerical answer...' : 'flag{...}'}" required
+              class="flex-1 bg-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-brand-500 text-slate-200 font-mono">
+            <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+              Submit
+            </button>
+          </form>
+        `}
+      </div>
+    `).join('');
+  }
 
-    function submitTask(e, taskId) {
-      e.preventDefault();
-      const task = tasks.find(t => t.id === taskId);
-      if(task) {
-        task.solved = true;
+  async function submitTask(event, taskId) {
+    event.preventDefault();
+    const inputEl = event.target.querySelector('input');
+    const submittedFlag = inputEl ? inputEl.value : "";
+
+    try {
+      const res = await fetch(`${API_BASE}/api/verify-flag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamName: currentTeamName,
+          taskId: taskId,
+          submittedFlag: submittedFlag
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(`🎉 ${data.message} Your score is now ${data.newScore} pts.`);
+        const task = tasks.find(t => t.id === taskId);
+        if (task) task.solved = true;
         renderTasks();
+        fetchLeaderboard();
+      } else {
+        alert(`❌ ${data.message}`);
       }
+    } catch (err) {
+      alert("Server wake-up in progress. Please wait 10 seconds and try again!");
     }
+  }
 
-    // --- 4. Leaderboard Mock Data ---
-    const leaderboardData = [
-      { rank: 1, name: "Null Pointers", tasks: "8/10", basePts: 650, mult: "3.0x", total: 1950 },
-      { rank: 2, name: "Byte Force", tasks: "7/10", basePts: 550, mult: "2.5x", total: 1375 },
-      { rank: 3, name: "Kernel Panic", tasks: "6/10", basePts: 450, mult: "2.0x", total: 900 },
-      { rank: 4, name: "AlgoRhythms", tasks: "5/10", basePts: 350, mult: "1.5x", total: 525 },
-      { rank: 5, name: "Syntax Errors", tasks: "4/10", basePts: 250, mult: "1.0x", total: 250 },
-    ];
+  // --- 5. Leaderboard API Fetch ---
+  async function fetchLeaderboard() {
+    const tbody = document.getElementById('leaderboard-body');
+    if (!tbody) return;
 
-    function renderLeaderboard() {
-      const tbody = document.getElementById('leaderboard-body');
-      tbody.innerHTML = leaderboardData.map(row => `
+    try {
+      const res = await fetch(`${API_BASE}/api/leaderboard`);
+      const teams = await res.json();
+
+      tbody.innerHTML = teams.map((team, idx) => `
         <tr class="hover:bg-slate-700/20 transition">
-          <td class="p-4 font-bold ${row.rank === 1 ? 'text-amber-400' : row.rank === 2 ? 'text-slate-300' : row.rank === 3 ? 'text-amber-700' : 'text-slate-500'}">#${row.rank}</td>
-          <td class="p-4 font-semibold text-white">${row.name}</td>
-          <td class="p-4 text-center font-mono text-slate-400">${row.tasks}</td>
-          <td class="p-4 text-right font-mono text-slate-300">${row.basePts}</td>
-          <td class="p-4 text-center font-mono text-brand-400 font-bold">${row.mult}</td>
-          <td class="p-4 text-right font-mono font-black text-emerald-400 text-base">${row.total}</td>
+          <td class="p-4 font-bold ${idx === 0 ? 'text-amber-400' : 'text-slate-300'}">#${idx + 1}</td>
+          <td class="p-4 font-semibold text-white">${team.team_name}</td>
+          <td class="p-4 text-center font-mono text-slate-400">${team.solved_count || 0}/10</td>
+          <td class="p-4 text-right font-mono font-bold text-emerald-400">${team.base_points}</td>
         </tr>
       `).join('');
+    } catch (err) {
+      console.log("Error fetching leaderboard:", err);
     }
-    renderLeaderboard();
+  }
 
-    // --- 5. Clash Canvas Quick Preview ---
-    const canvas = document.getElementById('clash-canvas');
-    const ctx = canvas.getContext('2d');
-    const gridSize = 9;
-    const cellSize = canvas.width / gridSize;
+  // --- 6. Bot Upload Handler ---
+  async function handleBotUpload(event) {
+    event.preventDefault();
+    const fileInput = document.getElementById('bot-file');
+    if (!fileInput || !fileInput.files[0]) return;
 
-    function drawGrid() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw grid lines
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= gridSize; i++) {
-        ctx.beginPath(); ctx.moveTo(i * cellSize, 0); ctx.lineTo(i * cellSize, canvas.height); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i * cellSize); ctx.lineTo(canvas.width, i * cellSize); ctx.stroke();
+    try {
+      const botCodeText = await fileInput.files[0].text();
+      const res = await fetch(`${API_BASE}/api/upload-bot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teamName: currentTeamName,
+          botCode: botCodeText
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const statusEl = document.getElementById('upload-status');
+        if (statusEl) statusEl.classList.remove('hidden');
       }
+    } catch (err) {
+      console.error("Bot upload error:", err);
+    }
+  }
 
-      // Draw Goal (Center)
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(4 * cellSize + 4, 4 * cellSize + 4, cellSize - 8, cellSize - 8);
+  // --- 7. Clash Canvas Quick Preview ---
+  const canvas = document.getElementById('clash-canvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+  const gridSize = 9;
 
-      // Draw Player 1 & Player 2
-      ctx.fillStyle = '#3b82f6'; // Blue Team
-      ctx.beginPath(); ctx.arc(1 * cellSize + cellSize/2, 1 * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2); ctx.fill();
-
-      ctx.fillStyle = '#ef4444'; // Red Team
-      ctx.beginPath(); ctx.arc(7 * cellSize + cellSize/2, 7 * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2); ctx.fill();
+  function drawGrid() {
+    if (!canvas || !ctx) return;
+    const cellSize = canvas.width / gridSize;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Grid lines
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= gridSize; i++) {
+      ctx.beginPath(); ctx.moveTo(i * cellSize, 0); ctx.lineTo(i * cellSize, canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * cellSize); ctx.lineTo(canvas.width, i * cellSize); ctx.stroke();
     }
 
-    function demoAnimate() {
-      drawGrid();
-      // Simple visual ripple on play trigger
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(4 * cellSize, 4 * cellSize, cellSize, cellSize);
-    }
+    // Goal (Center)
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(4 * cellSize + 4, 4 * cellSize + 4, cellSize - 8, cellSize - 8);
 
-    function handleBotUpload(e) {
-      e.preventDefault();
-      document.getElementById('upload-status').classList.remove('hidden');
-    }
+    // Player 1 (Blue)
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath(); ctx.arc(1 * cellSize + cellSize/2, 1 * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2); ctx.fill();
 
-    function runConfetti() {
+    // Player 2 (Red)
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(7 * cellSize + cellSize/2, 7 * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function runConfetti() {
+    if (typeof confetti === 'function') {
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     }
-  </script>
+  }
+
+  // --- Initial Execution ---
+  renderTasks();
+  fetchLeaderboard();
+</script>
 </body>
 </html>
